@@ -1,31 +1,27 @@
+# Copyright 1999-2009 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: $
-
-EAPI=1
-SRC_URI=""
-
-S="${WORKDIR}/xine-lib-1.2"
+# $Header: Exp $
 
 : ${EGIT_REPO_URI:=${XINE_LIB_GIT_REPO_URI:-git://projects.vdr-developer.org/xine-lib.git}}
 : ${EGIT_BRANCH:=${XINE_LIB_GIT_BRANCH:-vdpau-extensions-patch}}
 
-DESCRIPTION="Core libraries for Xine movie player - 1.2 development branch"
+inherit eutils flag-o-matic toolchain-funcs libtool git
+
+DESCRIPTION="Core libraries for Xine movie player || xine-lib-1.2 || HG Version"
 HOMEPAGE="http://hg.debian.org/hg/xine-lib/xine-lib-1.2/"
 
 LICENSE="GPL-2"
 SLOT="1"
-KEYWORDS="~x86 ~amd64"
+KEYWORDS="~amd64 ~x86"
 
-inherit eutils flag-o-matic toolchain-funcs libtool git
-
-IUSE="aalib libcaca -arts esd win32codecs nls +dvd +X directfb +vorbis +alsa
-gnome sdl speex +theora ipv6 altivec opengl +aac fbcon +xv xvmc
-samba dxr3 vidix mng +flac oss v4l xinerama vcd +a52 +mad imagemagick +dts
-debug modplug -gtk pulseaudio -mmap truetype vdpau wavpack +xcb jack +musepack
+IUSE="aalib libcaca arts esd win32codecs nls dvd X directfb vorbis alsa
+gnome sdl speex theora ipv6 altivec opengl aac fbcon xv xvmc
+samba dxr3 vidix mng flac oss v4l xinerama vcd a52 mad imagemagick dts
+debug modplug gtk pulseaudio mmap truetype wavpack musepack xcb jack
 real vdr"
 
 RDEPEND="X? ( x11-libs/libXext
-		x11-libs/libX11 )
+	x11-libs/libX11 )
 	xv? ( x11-libs/libXv )
 	xvmc? ( x11-libs/libXvMC )
 	xinerama? ( x11-libs/libXinerama )
@@ -53,14 +49,13 @@ RDEPEND="X? ( x11-libs/libXext
 	dts? ( || ( media-libs/libdca media-libs/libdts ) )
 	>=media-video/ffmpeg-0.4.9_p20070129
 	modplug? ( media-libs/libmodplug )
-	musepack? ( media-sound/musepack-tools )
 	nls? ( virtual/libintl )
-	gtk? ( x11-libs/gtk+:2 )
+	gtk? ( =x11-libs/gtk+-2* )
 	pulseaudio? ( media-sound/pulseaudio )
-	truetype? ( media-libs/freetype:2 media-libs/fontconfig )
-	vdpau? ( >=x11-drivers/nvidia-drivers-180.22 )
+	truetype? ( =media-libs/freetype-2* media-libs/fontconfig )
 	virtual/libiconv
 	wavpack? ( >=media-sound/wavpack-4.31 )
+	musepack? ( media-libs/libmpcdec )
 	xcb? ( >=x11-libs/libxcb-1.0 )
 	jack? ( >=media-sound/jack-audio-connection-kit-0.100 )
 	real? (
@@ -75,38 +70,36 @@ DEPEND="${RDEPEND}
 		 x11-proto/xf86vidmodeproto
 		 xinerama? ( x11-proto/xineramaproto ) )
 	v4l? ( virtual/os-headers )
-	app-text/docbook-xml-dtd:4.4
 	dev-util/pkgconfig
 	sys-devel/libtool
-	nls? ( sys-devel/gettext )
-	|| ( www-client/lynx www-client/w3m )" # needed for xmlto
+	nls? ( sys-devel/gettext )"
+
+S="${WORKDIR}/xine-lib-1.2"
 
 src_unpack() {
 	git_src_unpack
 	cd "${WORKDIR}" || die "cd to workdir failed"
 	cd "${S}" || die "cd failed"
-
 	if test -n "${XINE_LIB_LOCAL_PATCHES}"; then
 		elog "$XINE_LIB_LOCAL_PATCHES werden angewendet"
 		for LOCALPATCH in ${XINE_LIB_LOCAL_PATCHES}; do
 			if test -f "${LOCALPATCH}"; then
-				epatch "${LOCALPATCH}" || die "Lokales Patchen ist fehlgeschlagen" 
+				epatch "${LOCALPATCH}" || die "Lokales Patchen ist fehlgeschlagen"
 			fi
 		done
 	fi
 
 	sed -i src/xine-engine/Makefile.am -e "s/\"\$(builddir)\"\///g"
-	sed -i src/video_out/video_out_vdpau.c -e "s%//#define LOCKDISPLAY%#define LOCKDISPLAY%"
-	sed -i src/video_out/video_out_vdpau.c -e "s%#undef LOCKDISPLAY%//#undef LOCKDISPLAY%"
 
 	use vdr && sed -i src/vdr/input_vdr.c -e '/define VDR_ABS_FIFO_DIR/s|".*"|"/var/vdr/xine"|'
 
-	./autogen.sh noconfig || die "autogen failed"
 	elog "Repo: ${EGIT_REPO_URI}, Branch: ${EGIT_BRANCH} wird installiert"
 	elog "To change the repository or add patches, set XINE_LIB_GIT_REPO_URI,XINE_LIB_GIT_BRANCH,XINE_LIB_LOCAL_PATCHES in /etc/make.conf"
 }
 
 src_compile() {
+	./autogen.sh noconfig || die "autogen failed"
+
 	#prevent quicktime crashing
 	append-flags -frename-registers -ffunction-sections
 
@@ -135,6 +128,60 @@ src_compile() {
 
 	elibtoolize
 	ECONF_SOURCE="${S}" econf \
+		$(use_enable gnome gnomevfs) \
+		$(use_enable nls) \
+		$(use_enable ipv6) \
+		$(use_enable samba) \
+		$(use_enable altivec) \
+		$(use_enable v4l) \
+		\
+		$(use_enable mng) \
+		$(use_with imagemagick) \
+		$(use_enable gtk gdkpixbuf) \
+		\
+		$(use_enable aac faad) \
+		$(use_with flac libflac) \
+		$(use_with vorbis) \
+		$(use_with speex) \
+		$(use_with theora) \
+		$(use_with wavpack) \
+		$(use_enable modplug) \
+		$(use_enable a52 a52dec) --with-external-a52dec \
+		$(use_enable mad) --with-external-libmad \
+		$(use_enable dts) --with-external-libdts \
+		$(use_enable musepack) --with-external-libmpcdec \
+		\
+		$(use_with X x) \
+		$(use_enable xinerama) \
+		$(use_enable vidix) \
+		$(use_enable dxr3) \
+		$(use_enable directfb) \
+		$(use_enable fbcon fb) \
+		$(use_enable opengl) \
+		$(use_enable aalib) \
+		$(use_with libcaca caca) \
+		$(use_with sdl) \
+		$(use_enable xvmc) \
+		$(use_with xcb) \
+		\
+		$(use_enable oss) \
+		$(use_with alsa) \
+		$(use_with arts) \
+		$(use_with esd esound) \
+		$(use_with pulseaudio) \
+		$(use_with jack) \
+		\
+		$(use_enable vcd) --without-internal-vcdlibs \
+		\
+		$(use_enable win32codecs w32dll) \
+		$(use_enable real real-codecs) \
+		\
+		$(use_enable mmap) \
+		$(use_with truetype freetype) $(use_with truetype fontconfig) \
+		\
+		$(use_enable vdr) \
+		\
+		$(use_enable debug) \
 		--enable-asf \
 		--disable-optimizations \
 		${myconf} \
@@ -148,13 +195,11 @@ src_compile() {
 }
 
 src_install() {
-	emake -j1 DESTDIR="${D}" \
-	docdir="/usr/share/doc/${PF}" htmldir="/usr/share/doc/${PF}/html" \
-	install || die "emake install failed."
-
+	emake DESTDIR="${D}" \
+		docdir="/usr/share/doc/${PF}" htmldir="/usr/share/doc/${PF}/html" \
+		install || die "emake install failed."
 }
 
 pkg_postinst() {
 	elog "To change the repository or add patches, set XINE_LIB_GIT_REPO_URI,XINE_LIB_GIT_BRANCH,XINE_LIB_LOCAL_PATCHES in /etc/make.conf"
 }
-
