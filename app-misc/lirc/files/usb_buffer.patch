@@ -1,0 +1,30 @@
+diff -r --unified lirc-0.8.7pre1/drivers/lirc_mceusb/lirc_mceusb.c lirc-0.8.7pre1-patch/drivers/lirc_mceusb/lirc_mceusb.c
+--- lirc-0.8.7pre1/drivers/lirc_mceusb/lirc_mceusb.c	2010-05-07 05:53:43.000000000 -0700
++++ lirc-0.8.7pre1-patch/drivers/lirc_mceusb/lirc_mceusb.c	2010-07-19 15:57:56.000000000 -0700
+@@ -1165,7 +1165,7 @@
+ 	if (lirc_buffer_init(rbuf, sizeof(lirc_t), LIRCBUF_SIZE))
+ 		goto mem_alloc_fail;
+ 
+-	ir->buf_in = usb_buffer_alloc(dev, maxp, GFP_ATOMIC, &ir->dma_in);
++	ir->buf_in = usb_alloc_coherent(dev, maxp, GFP_ATOMIC, &ir->dma_in);
+ 	if (!ir->buf_in)
+ 		goto buf_in_alloc_fail;
+ 
+@@ -1315,7 +1315,7 @@
+ lirc_register_fail:
+ 	usb_free_urb(ir->urb_in);
+ urb_in_alloc_fail:
+-	usb_buffer_free(dev, maxp, ir->buf_in, ir->dma_in);
++	usb_free_coherent(dev, maxp, ir->buf_in, ir->dma_in);
+ buf_in_alloc_fail:
+ 	lirc_buffer_free(rbuf);
+ mem_alloc_fail:
+@@ -1344,7 +1344,7 @@
+ 	mutex_lock(&ir->dev_lock);
+ 	usb_kill_urb(ir->urb_in);
+ 	usb_free_urb(ir->urb_in);
+-	usb_buffer_free(dev, ir->len_in, ir->buf_in, ir->dma_in);
++	usb_free_coherent(dev, ir->len_in, ir->buf_in, ir->dma_in);
+ 	mutex_unlock(&ir->dev_lock);
+ 
+ 	unregister_from_lirc(ir);
